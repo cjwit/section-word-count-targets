@@ -28,7 +28,9 @@ class WordCounter {
 	}
 
 	public updateTargetCount() {
-		this._statusBarItem.hide();
+		// this._statusBarItem.hide();
+		this._statusBarItem.text = `$(pencil) Section progress: starting`;
+		this._statusBarItem.show();
 
 		// Get the current text editor 
 		let editor = window.activeTextEditor;
@@ -54,14 +56,24 @@ class WordCounter {
 		let lastHeaderLine: number = this._findLastHeaderLine(selectionLine, targets);
 		let nextHeaderLine: number = this._findNextHeaderLine(selectionLine, targets);
 		let lastHeaderTarget: number = -1;
+
+		this._statusBarItem.text = `$(pencil) Section progress: got boundaries ${targets[lastHeaderLine].hasTarget}`;
+
 		if (targets[lastHeaderLine].hasTarget) {
+			this._statusBarItem.text = `$(pencil) Section progress: has a target`;
 			lastHeaderTarget = targets[lastHeaderLine].target;
+		} else {
+			this._statusBarItem.text = `$(pencil) Section progress: no target`;
 		}
+
+		this._statusBarItem.text = `$(pencil) Section progress: getting section string`;
 
 		// prepare text string by removing target info from the word count
 		let sectionTextLines: string[] = documentLines.slice(lastHeaderLine, nextHeaderLine - 1);
 		let textString: string = sectionTextLines.join(' ');
 		textString = textString.replace(/\(Target:\s[0-9]+\)/, '');
+
+		this._statusBarItem.text = `$(pencil) Section progress: got selection string`;
 
 		// get section word count
 		let wordCount: number = 0;
@@ -69,12 +81,17 @@ class WordCounter {
 			wordCount = this._getWordCount(textString);
 		}
 
+		this._statusBarItem.text = `$(pencil) Section progress: update done`;
+
 		// calculate completion percentages and update the status bar
 		if (wordCount > 0 && lastHeaderTarget > 0) {
 			let percentComplete: number = Math.round(wordCount * 100 / lastHeaderTarget);
-			this._statusBarItem.text = `$(pencil) Section progress: ${percentComplete}% of ${lastHeaderTarget} target`;
+			this._statusBarItem.text = `$(pencil) Section progress: ${percentComplete}% of ${lastHeaderTarget}`;
 			this._statusBarItem.show();
+		} else {
+			this._statusBarItem.text = `$(pencil) Section progress: no update`;
 		}
+
 	}
 
 	private _getTargets(documentLines: string[]) {
@@ -91,11 +108,10 @@ class WordCounter {
 
 			if (targetData.isHeader) {
 
-				// first space gives header level ("### " = 3);
-				targetData.headerLevel = line.search(/\s/);
-
 				// determine whether there is a target
-				targetData.hasTarget = line.search(/\(Target:\s[0-9]+\)$/) != -1 ? true : false;
+				if (line.search(/\(Target:\s[0-9]+\)$/) !== -1) {
+					targetData.hasTarget = true;
+				}
 
 				// get target
 				if (targetData.hasTarget) {
@@ -183,7 +199,6 @@ class WordCounterController {
 
 class TargetData {
 	isHeader: boolean = false;
-	headerLevel: number = -1;
 	hasTarget: boolean = false;
 	target: number = -1;
 }
