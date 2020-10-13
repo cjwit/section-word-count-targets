@@ -1,6 +1,6 @@
-# Selection Word Count
+# Section Word Count Targets
 
-This simple VSCode extension calculates the word count of a selection and displays it in the status bar. The status bar item is hidden when nothing is selected (the selection word count is zero).
+This VSCode extension searches markdown headers for trailing text that includes `(Target: NNN)`. It displays the word count of the section calculated as percent progress against the given target.
 
 ## Requirements
 
