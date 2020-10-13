@@ -1,6 +1,6 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the necessary extensibility types to use in your code below
-import { window, commands, Disposable, ExtensionContext, StatusBarAlignment, StatusBarItem, Selection } from 'vscode';
+import { window, Disposable, ExtensionContext, StatusBarAlignment, StatusBarItem } from 'vscode';
 
 // This method is called when your extension is activated. Activation is
 // controlled by the activation events defined in package.json.
