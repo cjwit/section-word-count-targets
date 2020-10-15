@@ -8,7 +8,7 @@ export function activate(context: ExtensionContext) {
 
 	// Use the console to output diagnostic information (console.log) and errors (console.error).
 	// This line of code will only be executed once when your extension is activated.
-	// console.log('Congratulations, your extension "WordCount" is now active!');
+	// console.log('Congratulations, your extension "Section Word Count Targets" is now active!');
 
 	// create a new word counter
 	let wordCounter = new WordCounter();
@@ -28,7 +28,7 @@ class WordCounter {
 	}
 
 	public updateTargetCount() {
-		// this._statusBarItem.hide();
+		// this._statusBarItem.hide(); // return hide after debugging
 		this._statusBarItem.text = `$(pencil) Section progress: starting`;
 		this._statusBarItem.show();
 
@@ -174,7 +174,7 @@ class WordCounterController {
 
 	constructor(wordCounter: WordCounter) {
 		this._wordCounter = wordCounter;
-		this._wordCounter.updateTargetCount();
+		// this._wordCounter.updateTargetCount();
 
 		// subscribe to selection change and editor activation events
 		let subscriptions: Disposable[] = [];
