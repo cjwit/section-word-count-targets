@@ -1,6 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the necessary extensibility types to use in your code below
 import { window, Disposable, ExtensionContext, StatusBarAlignment, StatusBarItem } from 'vscode';
+import { resourceLimits } from 'worker_threads';
 
 // This method is called when your extension is activated. Activation is
 // controlled by the activation events defined in package.json.
@@ -8,7 +9,7 @@ export function activate(context: ExtensionContext) {
 
 	// Use the console to output diagnostic information (console.log) and errors (console.error).
 	// This line of code will only be executed once when your extension is activated.
-	// console.log('Congratulations, your extension "Section Word Count Targets" is now active!');
+	// console.log('Congratulations, your extension "WordCount" is now active!');
 
 	// create a new word counter
 	let wordCounter = new WordCounter();
@@ -20,17 +21,16 @@ export function activate(context: ExtensionContext) {
 }
 
 class WordCounter {
-	private _statusBarItem: StatusBarItem;
+	private statusMessage: StatusBarItem;
+	private targets: TargetData[] = [];
 
 	constructor() {
 		// Create as needed 
-		this._statusBarItem = window.createStatusBarItem(StatusBarAlignment.Left);
+		this.statusMessage = window.createStatusBarItem(StatusBarAlignment.Left);
 	}
 
 	public updateTargetCount() {
-		// this._statusBarItem.hide(); // return hide after debugging
-		this._statusBarItem.text = `$(pencil) Section progress: starting`;
-		this._statusBarItem.show();
+		this.statusMessage.hide();
 
 		// Get the current text editor 
 		let editor = window.activeTextEditor;
@@ -38,74 +38,66 @@ class WordCounter {
 			return;
 		}
 
+		// Only update status if file is in markdown 
 		let document = editor.document;
-
-		// Only update status if an MarkDown file 
 		if (document.languageId !== "markdown") {
 			return;
 		}
 
-		// get lines as array of strings
+		// get lines and populate target data
 		let documentLines: string[] = document.getText().split('\n');
-
-		// get section targets and header information
-		let targets: TargetData[] = this._getTargets(documentLines);
-
-		// check current section boundaries and target information
-		let selectionLine: number = editor.selection.start.line;
-		let lastHeaderLine: number = this._findLastHeaderLine(selectionLine, targets);
-		let nextHeaderLine: number = this._findNextHeaderLine(selectionLine, targets);
-		let lastHeaderTarget: number = -1;
-
-		this._statusBarItem.text = `$(pencil) Section progress: got boundaries ${targets[lastHeaderLine].hasTarget}`;
-
-		if (targets[lastHeaderLine].hasTarget) {
-			this._statusBarItem.text = `$(pencil) Section progress: has a target`;
-			lastHeaderTarget = targets[lastHeaderLine].target;
-		} else {
-			this._statusBarItem.text = `$(pencil) Section progress: no target`;
+		this.targets = this.getTargets(documentLines);
+		
+		// get section word count
+		let selectionText: string = this.getSelectionText(editor.selection.start.line, documentLines);
+		let wordCount: number = 0;
+		if (selectionText !== "") {
+			wordCount = this.getWordCount(selectionText);
 		}
 
-		this._statusBarItem.text = `$(pencil) Section progress: getting section string`;
+		// calculate completion percentages and update the status bar
+		let currentTarget = this.getCurrentTarget(editor.selection.start.line);
+		if (wordCount > 0 && currentTarget > 0) {
+			this.showMessage(wordCount, currentTarget);
+		}
+	}
+
+	private getSelectionText(lineNumber: number, documentLines: string[]) {
+		let lastHeaderLine: number = this.findPreviousHeaderLine(lineNumber);
+		let nextHeaderLine: number = this.findNextHeaderLine(lineNumber);
 
 		// prepare text string by removing target info from the word count
 		let sectionTextLines: string[] = documentLines.slice(lastHeaderLine, nextHeaderLine - 1);
-		let textString: string = sectionTextLines.join(' ');
-		textString = textString.replace(/\(Target:\s[0-9]+\)/, '');
-
-		this._statusBarItem.text = `$(pencil) Section progress: got selection string`;
-
-		// get section word count
-		let wordCount: number = 0;
-		if (textString !== "") {
-			wordCount = this._getWordCount(textString);
-		}
-
-		this._statusBarItem.text = `$(pencil) Section progress: update done`;
-
-		// calculate completion percentages and update the status bar
-		if (wordCount > 0 && lastHeaderTarget > 0) {
-			let percentComplete: number = Math.round(wordCount * 100 / lastHeaderTarget);
-			this._statusBarItem.text = `$(pencil) Section progress: ${percentComplete}% of ${lastHeaderTarget}`;
-			this._statusBarItem.show();
-		} else {
-			this._statusBarItem.text = `$(pencil) Section progress: no update`;
-		}
-
+		let result: string = sectionTextLines.join(' ');
+		result = result.replace(/\(Target:\s[0-9]+\)/, '');
+		
+		return result;
 	}
 
-	private _getTargets(documentLines: string[]) {
+	private getCurrentTarget(lineNumber: number) {
+		let lastHeaderLine: number = this.findPreviousHeaderLine(lineNumber);
+		let lastHeaderTarget: number = -1;
+
+		if (this.targets[lastHeaderLine].hasTarget) {
+			lastHeaderTarget = this.targets[lastHeaderLine].target;
+		}
+
+		return lastHeaderTarget;
+	}
+
+	private showMessage(wordCount: number, target: number) {
+		let percentComplete: number = Math.round(wordCount * 100 / target);
+		this.statusMessage.text = `$(pencil) Section progress: ${percentComplete}% of ${target}`;
+		this.statusMessage.show();
+	}
+
+	private getTargets(documentLines: string[]) {
 		let targets: TargetData[] = []
-
-		// find document's section targets
 		documentLines.forEach(line => {
-
-			// set up data object
 			let targetData = new TargetData;
 
-			// determine whether the line is a header
+			// add header and target data to the object
 			targetData.isHeader = line.search(/^#+\s/) != -1 ? true : false;
-
 			if (targetData.isHeader) {
 
 				// determine whether there is a target
@@ -125,30 +117,30 @@ class WordCounter {
 		return targets;
 	}
 
-	private _findNextHeaderLine(selectionLine: number, targets: TargetData[]) {
-		let nextHeaderLine: number = selectionLine;
-		let nextLineFound: boolean = false;
-		while (!nextLineFound && nextHeaderLine < targets.length) {
-			if (targets[nextHeaderLine].isHeader) {
-				nextLineFound = true;
+	private findNextHeaderLine(currentLine: number) {
+		let nextHeaderLine: number = currentLine;
+		let nextHeaderFound: boolean = false;
+		while (!nextHeaderFound && nextHeaderLine < this.targets.length) {
+			if (this.targets[nextHeaderLine].isHeader) {
+				nextHeaderFound = true;
 			}
 			nextHeaderLine++;
 		}
 		return nextHeaderLine;
 	}
 
-	private _findLastHeaderLine(currentLine: number, targets: TargetData[]) {
-		let lastHeaderLine: number = -1;
-		while (currentLine >= 0 && lastHeaderLine < 0) {
-			if (targets[currentLine].isHeader) {
-				lastHeaderLine = currentLine;
+	private findPreviousHeaderLine(currentLine: number) {
+		let previousHeaderLine: number = -1;
+		while (currentLine >= 0 && previousHeaderLine < 0) {
+			if (this.targets[currentLine].isHeader) {
+				previousHeaderLine = currentLine;
 			}
 			currentLine--;
 		}
-		return lastHeaderLine;
+		return previousHeaderLine;
 	}
 
-	private _getWordCount(textString: string): number {
+	private getWordCount(textString: string): number {
 
 		// Parse out unwanted whitespace so the split is accurate 
 		textString = textString.replace(/(< ([^>]+)<)/g, '').replace(/\s+/g, ' ');
@@ -163,7 +155,7 @@ class WordCounter {
 	}
 
 	dispose() {
-		this._statusBarItem.dispose();
+		this.statusMessage.dispose();
 	}
 }
 
@@ -174,7 +166,7 @@ class WordCounterController {
 
 	constructor(wordCounter: WordCounter) {
 		this._wordCounter = wordCounter;
-		// this._wordCounter.updateTargetCount();
+		this._wordCounter.updateTargetCount();
 
 		// subscribe to selection change and editor activation events
 		let subscriptions: Disposable[] = [];
