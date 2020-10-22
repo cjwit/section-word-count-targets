@@ -9,7 +9,7 @@ export function activate(context: ExtensionContext) {
 
 	// Use the console to output diagnostic information (console.log) and errors (console.error).
 	// This line of code will only be executed once when your extension is activated.
-	// console.log('Congratulations, your extension "WordCount" is now active!');
+	// console.log('Congratulations, your extension "Test" is now active!');
 
 	// create a new word counter
 	let wordCounter = new WordCounter();
@@ -22,7 +22,7 @@ export function activate(context: ExtensionContext) {
 
 class WordCounter {
 	private statusMessage: StatusBarItem;
-	private targets: TargetData[] = [];
+	private targets: any[] = [];
 
 	constructor() {
 		// Create as needed 
@@ -74,8 +74,9 @@ class WordCounter {
 		return result;
 	}
 
-	private getCurrentTarget(lineNumber: number) {
+	private getCurrentTarget(lineNumber: number) {		
 		let lastHeaderLine: number = this.findPreviousHeaderLine(lineNumber);
+		if (lastHeaderLine < 0) { return -1; }
 		let lastHeaderTarget: number = -1;
 
 		if (this.targets[lastHeaderLine].hasTarget) {
@@ -92,9 +93,13 @@ class WordCounter {
 	}
 
 	private getTargets(documentLines: string[]) {
-		let targets: TargetData[] = []
+		let targets: any[] = []
 		documentLines.forEach(line => {
-			let targetData = new TargetData;
+			let targetData = {
+				isHeader: false,
+				hasTarget: false,
+				target: -1
+			};
 
 			// add header and target data to the object
 			targetData.isHeader = line.search(/^#+\s/) != -1 ? true : false;
@@ -187,10 +192,4 @@ class WordCounterController {
 	private _onEvent() {
 		this._wordCounter.updateTargetCount();
 	}
-}
-
-class TargetData {
-	isHeader: boolean = false;
-	hasTarget: boolean = false;
-	target: number = -1;
 }
