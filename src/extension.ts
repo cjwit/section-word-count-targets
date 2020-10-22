@@ -23,6 +23,7 @@ export function activate(context: ExtensionContext) {
 class WordCounter {
 	private statusMessage: StatusBarItem;
 	private targets: any[] = [];
+	private readonly NO_VALUE: number = -1; 
 
 	constructor() {
 		// Create as needed 
@@ -76,8 +77,8 @@ class WordCounter {
 
 	private getCurrentTarget(lineNumber: number) {		
 		let lastHeaderLine: number = this.findPreviousHeaderLine(lineNumber);
-		if (lastHeaderLine < 0) { return -1; }
-		let lastHeaderTarget: number = -1;
+		if (lastHeaderLine == this.NO_VALUE) { return this.NO_VALUE; }
+		let lastHeaderTarget: number = this.NO_VALUE;
 
 		if (this.targets[lastHeaderLine].hasTarget) {
 			lastHeaderTarget = this.targets[lastHeaderLine].target;
@@ -98,7 +99,7 @@ class WordCounter {
 			let targetData = {
 				isHeader: false,
 				hasTarget: false,
-				target: -1
+				target: this.NO_VALUE
 			};
 
 			// add header and target data to the object
@@ -135,7 +136,7 @@ class WordCounter {
 	}
 
 	private findPreviousHeaderLine(currentLine: number) {
-		let previousHeaderLine: number = -1;
+		let previousHeaderLine: number = this.NO_VALUE;
 		while (currentLine >= 0 && previousHeaderLine < 0) {
 			if (this.targets[currentLine].isHeader) {
 				previousHeaderLine = currentLine;
