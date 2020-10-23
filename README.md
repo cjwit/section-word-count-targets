@@ -2,7 +2,7 @@
 
 This VSCode extension searches markdown headers for trailing text that includes `(Target: NNN)` where `NNN` is a number (no commas or periods). It than calculates the text between two headers and, if the previous header has a target, displays the completion percentage.
 
-![Example](./assets/example.png)
+![Example](https://raw.githubusercontent.com/cjwit/section-word-count-targets/master/assets/example.png)
 
 ## Requirements
 
